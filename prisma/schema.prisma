@@ -1,0 +1,333 @@
+// Multi-tenant restaurant management
+// Sale = Bill | PurchaseItem = purchase master | all tenant data scoped by restaurantId
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  RESTAURANT_ADMIN
+  EMPLOYEE
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum RestaurantStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum SalaryPaymentType {
+  PAYMENT
+  ADVANCE
+}
+
+enum SalaryType {
+  DAILY
+  MONTHLY
+}
+
+model User {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  passwordHash String?
+  googleId     String?    @unique
+  role         UserRole
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  sessions            Session[]
+  memberships         RestaurantMembership[]
+  employeeProfile     Employee?
+  salesCreated        Sale[]          @relation("SaleCreatedBy")
+  salaryPaymentsCreated SalaryPayment[] @relation("SalaryPaymentCreatedBy")
+}
+
+model Session {
+  id                 String   @id @default(cuid())
+  userId             String
+  token              String   @unique
+  activeRestaurantId String?
+  expiresAt          DateTime
+  createdAt          DateTime @default(now())
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+model Restaurant {
+  id               String           @id @default(cuid())
+  name             String
+  address          String?
+  phone            String?
+  whatsapp         String?
+  email            String?
+  openingTime      String?
+  closingTime      String?
+  currency         String           @default("LKR")
+  taxRate          Float?
+  deliveryEnabled  Boolean          @default(false)
+  category         String?
+  logoUrl          String?
+  status           RestaurantStatus @default(ACTIVE)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  memberships   RestaurantMembership[]
+  employees     Employee[]
+  photos        RestaurantPhoto[]
+  purchaseItems PurchaseItem[]
+  suppliers     Supplier[]
+  purchases     Purchase[]
+  menuItems     MenuItem[]
+  sales         Sale[]
+  expenses      Expense[]
+  salaryPayments SalaryPayment[]
+  purchaseCategories PurchaseItemCategory[]
+}
+
+model RestaurantMembership {
+  id           String   @id @default(cuid())
+  userId       String
+  restaurantId String
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, restaurantId])
+  @@index([restaurantId])
+}
+
+model RestaurantPhoto {
+  id           String   @id @default(cuid())
+  restaurantId String
+  url          String
+  caption      String?
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
+}
+
+/// Reusable purchase item categories (per restaurant)
+model PurchaseItemCategory {
+  id           String   @id @default(cuid())
+  restaurantId String
+  name         String
+  sortOrder    Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  restaurant Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  items      PurchaseItem[]
+
+  @@unique([restaurantId, name])
+  @@index([restaurantId])
+  @@index([restaurantId, active])
+}
+
+/// Purchase Item Master (ingredients / materials)
+model PurchaseItem {
+  id                  String    @id @default(cuid())
+  restaurantId        String
+  categoryId          String
+  name                String
+  defaultUnit         String?
+  defaultSupplierId   String?
+  lastPurchasePrice   Float?
+  active              Boolean   @default(true)
+  sortOrder           Int       @default(0)
+  useCount            Int       @default(0)
+  lastUsedAt          DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  restaurant      Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  category        PurchaseItemCategory @relation(fields: [categoryId], references: [id])
+  defaultSupplier Supplier?            @relation(fields: [defaultSupplierId], references: [id])
+  lines           PurchaseLine[]
+
+  @@unique([restaurantId, name])
+  @@index([restaurantId])
+  @@index([restaurantId, active])
+  @@index([categoryId])
+  @@index([name])
+}
+
+model Supplier {
+  id           String     @id @default(cuid())
+  restaurantId String
+  name         String
+  phone        String?
+  notes        String?
+  active       Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  purchases  Purchase[]
+  defaultForItems PurchaseItem[]
+
+  @@unique([restaurantId, name])
+  @@index([restaurantId])
+}
+
+model Purchase {
+  id            String         @id @default(cuid())
+  restaurantId  String
+  date          DateTime
+  totalAmount   Float
+  supplierId    String?
+  invoiceNumber String?
+  notes         String?
+  paymentMethod String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  restaurant Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  supplier   Supplier?      @relation(fields: [supplierId], references: [id])
+  lines      PurchaseLine[]
+
+  @@index([restaurantId])
+  @@index([date])
+}
+
+model PurchaseLine {
+  id         String       @id @default(cuid())
+  purchaseId String
+  itemId     String
+  amount     Float
+  quantity   Float?
+  unitPrice  Float?
+  notes      String?
+  purchase   Purchase     @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  item       PurchaseItem @relation(fields: [itemId], references: [id])
+
+  @@index([itemId])
+  @@index([purchaseId])
+}
+
+/// Menu items sold to customers (priced)
+model MenuItem {
+  id           String     @id @default(cuid())
+  restaurantId String
+  name         String
+  price        Float
+  category     String?
+  active       Boolean    @default(true)
+  sortOrder    Int        @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  lines      SaleLine[]
+
+  @@unique([restaurantId, name])
+  @@index([restaurantId])
+}
+
+/// Sale = Bill
+model Sale {
+  id           String     @id @default(cuid())
+  restaurantId String
+  createdById  String?
+  date         DateTime
+  totalAmount  Float
+  notes        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdBy  User?      @relation("SaleCreatedBy", fields: [createdById], references: [id])
+  lines      SaleLine[]
+
+  @@index([restaurantId])
+  @@index([date])
+}
+
+model SaleLine {
+  id         String   @id @default(cuid())
+  saleId     String
+  menuItemId String
+  quantity   Int
+  unitPrice  Float
+  amount     Float
+  sale       Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+
+  @@index([menuItemId])
+  @@index([saleId])
+}
+
+model Expense {
+  id           String   @id @default(cuid())
+  restaurantId String
+  date         DateTime
+  category     String
+  description  String?
+  amount       Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
+  @@index([date])
+  @@index([category])
+}
+
+model Employee {
+  id            String     @id @default(cuid())
+  restaurantId  String
+  userId        String?    @unique
+  name          String
+  phone         String?
+  position      String?
+  role          String?
+  salaryType    SalaryType @default(MONTHLY)
+  salaryAmount  Float      @default(0)
+  active        Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  restaurant Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  user       User?           @relation(fields: [userId], references: [id])
+  payments   SalaryPayment[]
+
+  @@index([restaurantId])
+}
+
+model SalaryPayment {
+  id           String            @id @default(cuid())
+  restaurantId String
+  employeeId   String
+  createdById  String?
+  date         DateTime
+  amount       Float
+  type         SalaryPaymentType @default(PAYMENT)
+  notes        String?
+  createdAt    DateTime          @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  employee   Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdBy  User?      @relation("SalaryPaymentCreatedBy", fields: [createdById], references: [id])
+
+  @@index([restaurantId])
+  @@index([date])
+  @@index([employeeId])
+}
