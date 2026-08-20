@@ -57,13 +57,23 @@ export async function seedPurchaseCategories(restaurantId: string, tx: Tx) {
   return categories;
 }
 
+export function categoryIdFromName(
+  categoryName: string,
+  categories: { id: string; name: string }[]
+) {
+  const mapped = LEGACY_CATEGORY_MAP[categoryName] ?? categoryName;
+  return (
+    categories.find((c) => c.name === mapped)?.id ??
+    categories.find((c) => c.name === "Other")!.id
+  );
+}
+
 export async function resolveCategoryId(
   restaurantId: string,
   categoryName: string,
-  tx: Tx
+  tx: Tx,
+  existingCategories?: { id: string; name: string }[]
 ) {
-  const mapped = LEGACY_CATEGORY_MAP[categoryName] ?? categoryName;
-  const cats = await seedPurchaseCategories(restaurantId, tx);
-  const found = cats.find((c) => c.name === mapped);
-  return found?.id ?? cats.find((c) => c.name === "Other")!.id;
+  const cats = existingCategories ?? (await seedPurchaseCategories(restaurantId, tx));
+  return categoryIdFromName(categoryName, cats);
 }

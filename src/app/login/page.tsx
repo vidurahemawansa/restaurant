@@ -1,8 +1,15 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import LoginForm from "./LoginForm";
+import { getCurrentUser, getDashboardPath } from "@/lib/auth";
 import { isGoogleAuthConfigured } from "@/lib/auth/google";
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const user = await getCurrentUser();
+  if (user) {
+    redirect(getDashboardPath(user.role, Boolean(user.restaurantId)));
+  }
+
   const googleAuthEnabled = isGoogleAuthConfigured();
 
   return (

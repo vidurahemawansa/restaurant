@@ -17,9 +17,6 @@ export async function middleware(request: NextRequest) {
     PUBLIC_API.some((p) => pathname.startsWith(p));
 
   if (isPublic) {
-    if (token && (pathname === "/login" || pathname === "/register")) {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
     return NextResponse.next();
   }
 

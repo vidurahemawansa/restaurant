@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authErrorResponse, requireAuth, setActiveRestaurantOnSession } from "@/lib/auth";
-import { resolveCategoryId, seedPurchaseCategories } from "@/lib/purchase-categories";
+import {
+  categoryIdFromName,
+  seedPurchaseCategories,
+} from "@/lib/purchase-categories";
 
 const DEFAULT_PURCHASE_ITEMS = [
   { name: "Chicken", category: "Meat", defaultUnit: "kg", sortOrder: 1 },
@@ -45,7 +48,8 @@ export async function POST(request: NextRequest) {
     const category = body.category?.trim();
     const taxRate = body.taxRate != null && body.taxRate !== "" ? Number(body.taxRate) : null;
 
-    const restaurant = await prisma.$transaction(async (tx) => {
+    const restaurant = await prisma.$transaction(
+      async (tx) => {
       const r = await tx.restaurant.create({
         data: {
           name,
@@ -69,9 +73,9 @@ export async function POST(request: NextRequest) {
         data: { userId: user.id, restaurantId: r.id },
       });
 
-      await seedPurchaseCategories(r.id, tx);
+      const categories = await seedPurchaseCategories(r.id, tx);
       for (const item of DEFAULT_PURCHASE_ITEMS) {
-        const categoryId = await resolveCategoryId(r.id, item.category, tx);
+        const categoryId = categoryIdFromName(item.category, categories);
         await tx.purchaseItem.create({
           data: {
             restaurantId: r.id,
@@ -87,7 +91,9 @@ export async function POST(request: NextRequest) {
       }
 
       return r;
-    });
+    },
+      { timeout: 30_000 }
+    );
 
     await setActiveRestaurantOnSession(restaurant.id);
 

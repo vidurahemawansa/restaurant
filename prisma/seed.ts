@@ -3,7 +3,7 @@ import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaClient } from "../src/generated/prisma/client";
 import path from "path";
 import bcrypt from "bcryptjs";
-import { resolveCategoryId, seedPurchaseCategories } from "../src/lib/purchase-categories";
+import { categoryIdFromName, seedPurchaseCategories } from "../src/lib/purchase-categories";
 
 const dbPath = path.join(process.cwd(), "prisma", "dev.db");
 const adapter = new PrismaBetterSqlite3({ url: `file:${dbPath}` });
@@ -94,10 +94,10 @@ async function main() {
     create: { userId: demoAdmin.id, restaurantId: restaurant.id },
   });
 
-  await seedPurchaseCategories(restaurant.id, prisma);
+  const categories = await seedPurchaseCategories(restaurant.id, prisma);
 
   for (const item of PURCHASE_ITEMS) {
-    const categoryId = await resolveCategoryId(restaurant.id, item.category, prisma);
+    const categoryId = categoryIdFromName(item.category, categories);
     await prisma.purchaseItem.upsert({
       where: { restaurantId_name: { restaurantId: restaurant.id, name: item.name } },
       update: {

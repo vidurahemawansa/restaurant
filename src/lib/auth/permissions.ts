@@ -82,7 +82,12 @@ export function authErrorResponse(err: unknown) {
   if (err instanceof AuthError) {
     return NextResponse.json({ error: err.message }, { status: err.status });
   }
-  return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  console.error(err);
+  const message =
+    process.env.NODE_ENV === "development" && err instanceof Error
+      ? err.message
+      : "Internal server error";
+  return NextResponse.json({ error: message }, { status: 500 });
 }
 
 export function canAccessFinancials(role: UserRole) {
