@@ -227,6 +227,8 @@ model MenuItem {
   id           String     @id @default(cuid())
   restaurantId String
   name         String
+  /// Kitchen-facing abbreviation shown on tickets, e.g. "Ch. Rice - F"
+  shortName    String?
   price        Float
   category     String?
   active       Boolean    @default(true)
@@ -241,7 +243,7 @@ model MenuItem {
   @@index([restaurantId])
 }
 
-/// Sale = Bill
+/// Sale = Bill / kitchen ticket
 model Sale {
   id           String     @id @default(cuid())
   restaurantId String
@@ -249,6 +251,13 @@ model Sale {
   date         DateTime
   totalAmount  Float
   notes        String?
+  /// Sequential ticket # per restaurant (shown as #177)
+  ticketNumber Int        @default(0)
+  /// Takeaway | Dine-in | Delivery
+  orderType    String     @default("Takeaway")
+  /// OPEN | CLOSED
+  status       String     @default("CLOSED")
+  closedAt     DateTime?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
@@ -256,7 +265,9 @@ model Sale {
   createdBy  User?      @relation("SaleCreatedBy", fields: [createdById], references: [id])
   lines      SaleLine[]
 
+  @@unique([restaurantId, ticketNumber])
   @@index([restaurantId])
+  @@index([restaurantId, status])
   @@index([date])
 }
 

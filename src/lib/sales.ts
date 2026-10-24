@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { nextTicketNumber, TICKET_STATUS } from "@/lib/tickets";
 import { parseDateInput } from "@/lib/utils";
 
 export type SaleLineInput = {
@@ -13,6 +14,8 @@ export type CreateSaleInput = {
   date: string | Date;
   lines: SaleLineInput[];
   notes?: string | null;
+  orderType?: string | null;
+  status?: string | null;
 };
 
 export type ValidatedSaleLine = {
@@ -64,6 +67,10 @@ export async function createSale(input: CreateSaleInput) {
   }
 
   const totalAmount = saleLines.reduce((sum, l) => sum + l.amount, 0);
+  const status =
+    input.status === TICKET_STATUS.OPEN ? TICKET_STATUS.OPEN : TICKET_STATUS.CLOSED;
+  const ticketNumber = await nextTicketNumber(input.restaurantId);
+  const orderType = (input.orderType || "Takeaway").trim() || "Takeaway";
 
   return prisma.sale.create({
     data: {
@@ -72,6 +79,10 @@ export async function createSale(input: CreateSaleInput) {
       date,
       totalAmount,
       notes: input.notes || null,
+      ticketNumber,
+      orderType,
+      status,
+      closedAt: status === TICKET_STATUS.CLOSED ? date : null,
       lines: { create: saleLines },
     },
     include: { lines: { include: { menuItem: true } } },

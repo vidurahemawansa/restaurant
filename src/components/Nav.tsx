@@ -6,9 +6,9 @@ import type { AuthUser } from "@/lib/auth/session";
 
 const ADMIN_PRIMARY = [
   { href: "/", label: "Dashboard", icon: "◉" },
+  { href: "/tickets", label: "Tickets", icon: "#" },
   { href: "/sales", label: "Sales", icon: "◎" },
   { href: "/purchases", label: "Purchases", icon: "＋" },
-  { href: "/expenses", label: "Expenses", icon: "₨" },
 ] as const;
 
 const ADMIN_MORE = [
