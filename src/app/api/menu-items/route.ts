@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
         name,
         price,
         category: body.category || null,
+        shortName: body.shortName?.trim() || null,
         sortOrder: Number(body.sortOrder ?? 50),
       },
     });

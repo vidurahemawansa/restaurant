@@ -50,6 +50,10 @@ export function DashboardShell({ data }: { data: DashboardData }) {
       <section>
         <SectionHeader title="Quick actions" />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Link href="/tickets" className="card flex flex-col items-center gap-2 p-4 text-center transition hover:border-[var(--accent-muted)]">
+            <span className="text-2xl">#</span>
+            <span className="text-sm font-semibold">Tickets</span>
+          </Link>
           <Link href="/sales" className="card flex flex-col items-center gap-2 p-4 text-center transition hover:border-[var(--accent-muted)]">
             <span className="text-2xl">◎</span>
             <span className="text-sm font-semibold">+ Sale</span>

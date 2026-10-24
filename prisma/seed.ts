@@ -30,11 +30,11 @@ const PURCHASE_ITEMS = [
 ];
 
 const MENU_ITEMS = [
-  { name: "Chicken Fried Rice", price: 650, category: "Rice", sortOrder: 1 },
-  { name: "Egg Fried Rice", price: 550, category: "Rice", sortOrder: 2 },
-  { name: "Chicken Kottu", price: 700, category: "Kottu", sortOrder: 4 },
-  { name: "Beef Kottu", price: 800, category: "Kottu", sortOrder: 5 },
-  { name: "Soft Drink", price: 150, category: "Drinks", sortOrder: 9 },
+  { name: "Chicken Fried Rice", shortName: "Ch. Rice - F", price: 650, category: "Rice", sortOrder: 1 },
+  { name: "Egg Fried Rice", shortName: "Egg Rice - F", price: 550, category: "Rice", sortOrder: 2 },
+  { name: "Chicken Kottu", shortName: "Ch. Kottu", price: 700, category: "Kottu", sortOrder: 4 },
+  { name: "Beef Kottu", shortName: "Bf. Kottu", price: 800, category: "Kottu", sortOrder: 5 },
+  { name: "Soft Drink", shortName: "Soft Drink", price: 150, category: "Drinks", sortOrder: 9 },
 ];
 
 async function hash(pw: string) {
@@ -119,7 +119,12 @@ async function main() {
   for (const item of MENU_ITEMS) {
     await prisma.menuItem.upsert({
       where: { restaurantId_name: { restaurantId: restaurant.id, name: item.name } },
-      update: { price: item.price, category: item.category, sortOrder: item.sortOrder },
+      update: {
+        price: item.price,
+        category: item.category,
+        sortOrder: item.sortOrder,
+        shortName: item.shortName,
+      },
       create: { ...item, restaurantId: restaurant.id },
     });
   }
@@ -220,25 +225,101 @@ async function main() {
     });
 
     const cfr = menuByName["Chicken Fried Rice"];
-    if (cfr) {
+    const kottu = menuByName["Chicken Kottu"];
+    const beef = menuByName["Beef Kottu"];
+    const drink = menuByName["Soft Drink"];
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const threeDaysAgo = new Date(today);
+    threeDaysAgo.setDate(today.getDate() - 3);
+    const tenDaysAgo = new Date(today);
+    tenDaysAgo.setDate(today.getDate() - 10);
+
+    async function ticket(opts: {
+      number: number;
+      date: Date;
+      orderType: string;
+      status: "OPEN" | "CLOSED";
+      lines: { item: { id: string; price: number } | undefined; quantity: number }[];
+    }) {
+      const lines = opts.lines.filter(
+        (l): l is { item: { id: string; price: number }; quantity: number } => Boolean(l.item)
+      );
+      if (!lines.length) return;
+      const totalAmount = lines.reduce((sum, l) => sum + l.quantity * l.item.price, 0);
       await prisma.sale.create({
         data: {
           restaurantId: restaurant.id,
-          date: today,
-          totalAmount: 25 * cfr.price,
+          date: opts.date,
+          ticketNumber: opts.number,
+          orderType: opts.orderType,
+          status: opts.status,
+          closedAt: opts.status === "CLOSED" ? opts.date : null,
+          totalAmount,
           lines: {
-            create: [
-              {
-                menuItemId: cfr.id,
-                quantity: 25,
-                unitPrice: cfr.price,
-                amount: 25 * cfr.price,
-              },
-            ],
+            create: lines.map((l) => ({
+              menuItemId: l.item.id,
+              quantity: l.quantity,
+              unitPrice: l.item.price,
+              amount: l.quantity * l.item.price,
+            })),
           },
         },
       });
     }
+
+    await ticket({
+      number: 177,
+      date: today,
+      orderType: "Takeaway",
+      status: "OPEN",
+      lines: [{ item: cfr, quantity: 1 }],
+    });
+    await ticket({
+      number: 178,
+      date: today,
+      orderType: "Dine-in",
+      status: "OPEN",
+      lines: [
+        { item: cfr, quantity: 1 },
+        { item: kottu, quantity: 2 },
+      ],
+    });
+    await ticket({
+      number: 176,
+      date: today,
+      orderType: "Takeaway",
+      status: "CLOSED",
+      lines: [
+        { item: kottu, quantity: 1 },
+        { item: drink, quantity: 1 },
+      ],
+    });
+    await ticket({
+      number: 170,
+      date: yesterday,
+      orderType: "Delivery",
+      status: "CLOSED",
+      lines: [{ item: beef, quantity: 2 }],
+    });
+    await ticket({
+      number: 161,
+      date: threeDaysAgo,
+      orderType: "Takeaway",
+      status: "CLOSED",
+      lines: [
+        { item: cfr, quantity: 3 },
+        { item: kottu, quantity: 1 },
+        { item: drink, quantity: 2 },
+      ],
+    });
+    await ticket({
+      number: 140,
+      date: tenDaysAgo,
+      orderType: "Dine-in",
+      status: "CLOSED",
+      lines: [{ item: cfr, quantity: 1 }],
+    });
 
     await prisma.salaryPayment.create({
       data: {

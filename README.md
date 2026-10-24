@@ -28,6 +28,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | Screen | Purpose |
 |--------|---------|
 | **Dashboard** | Today sales/spend/profit, major costs, month vs last month |
+| **Tickets** | Open/closed orders with item names on each card |
 | **Purchase** | Tap item → amount → save (multi-line). Supplier/qty optional |
 | **Sales** | Enter quantities sold; revenue from menu prices |
 | **Bill scan** | Photograph handwritten Sinhala bill → AI extract → review → save |

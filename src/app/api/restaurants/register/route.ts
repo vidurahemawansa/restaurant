@@ -17,9 +17,9 @@ const DEFAULT_PURCHASE_ITEMS = [
 ];
 
 const DEFAULT_MENU = [
-  { name: "Chicken Fried Rice", price: 650, category: "Rice", sortOrder: 1 },
-  { name: "Egg Fried Rice", price: 550, category: "Rice", sortOrder: 2 },
-  { name: "Chicken Kottu", price: 700, category: "Kottu", sortOrder: 4 },
+  { name: "Chicken Fried Rice", shortName: "Ch. Rice - F", price: 650, category: "Rice", sortOrder: 1 },
+  { name: "Egg Fried Rice", shortName: "Egg Rice - F", price: 550, category: "Rice", sortOrder: 2 },
+  { name: "Chicken Kottu", shortName: "Ch. Kottu", price: 700, category: "Kottu", sortOrder: 4 },
 ];
 
 const RESTAURANT_CATEGORIES = [
